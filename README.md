@@ -1,5 +1,4 @@
-# Telegram File Sender Script
-
+# send-tgram
 A simple bash script to send files or folders to a Telegram chat using a bot.
 
 ## Features
