@@ -1,10 +1,15 @@
-# 📤 send_to_telegram.sh
+# Telegram File Sender Script
 
-A simple bash script to send any file to a Telegram chat using a bot.
+A simple bash script to send files or folders to a Telegram chat using a bot.
 
-## 🔧 Setup
+## Features
+- Send any file or folder directly from the terminal
+- Automatically zips folders
+- Splits files if size > 48MB (Telegram upload limit)
+- Sends file name only (no verbose output)
 
-1. Edit the script and add your `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
-2. Make it executable: `chmod +x send_to_telegram.sh`
-3. (Optional) Move it globally: `sudo mv send_to_telegram.sh /usr/local/bin/send_to_telegram`
-
+## Usage
+Place the script in `/usr/local/bin/tgsend`, then run:  
+```bash
+tgsend myfile.txt  
+tgsend myfolder/
