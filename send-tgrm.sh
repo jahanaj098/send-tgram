@@ -1,47 +1,45 @@
 #!/bin/bash
 
-TELEGRAM_BOT_TOKEN="tokenhere"
-TELEGRAM_CHAT_ID="idhere"
-MAX_SIZE_MB=48
-PART_SIZE=$((MAX_SIZE_MB * 1024 * 1024))
+TELEGRAM_BOT_TOKEN="your_bot_token_here"
+TELEGRAM_CHAT_ID="-100xxxxxxxxxx"  # Replace with your actual Chat ID
+TMP_DIR="/tmp/tgsend"
+
+mkdir -p "$TMP_DIR"
+
+MAX_SIZE=$((48 * 1024 * 1024))  # 48MB
 
 send_file() {
     local file="$1"
-    curl -s -F "chat_id=$TELEGRAM_CHAT_ID" -F document=@"$file" \
-        "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendDocument" > /dev/null && \
-        echo "✅ Sent: $(basename "$file")"
-}
+    local name=$(basename "$file")
+    local size
+    size=$(stat -c%s "$file")
 
-handle_large_file() {
-    local file="$1"
-    split -b $PART_SIZE "$file" "${file}.part_"
-    rm "$file"
-    for part in ${file}.part_*; do
-        send_file "$part"
-        rm "$part"
-    done
-}
-
-main() {
-    input="$1"
-
-    if [[ -z "$input" ]]; then
-        echo "Usage: $0 <file_or_folder>"
-        exit 1
-    fi
-
-    if [[ -d "$input" ]]; then
-        zip_name="/tmp/$(basename "$input").zip"
-        zip -r -q "$zip_name" "$input"
-        input="$zip_name"
-    fi
-
-    size=$(stat -c %s "$input")
-    if (( size > PART_SIZE )); then
-        handle_large_file "$input"
+    if [ "$size" -le "$MAX_SIZE" ]; then
+        curl -s -F document=@"$file" "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendDocument" \
+            -F chat_id="$TELEGRAM_CHAT_ID" > /dev/null
+        echo "✅ $name"
     else
-        send_file "$input"
+        split -b $MAX_SIZE "$file" "$TMP_DIR/${name}."
+        for part in "$TMP_DIR/${name}."*; do
+            curl -s -F document=@"$part" "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendDocument" \
+                -F chat_id="$TELEGRAM_CHAT_ID" > /dev/null
+            echo "✅ $(basename "$part")"
+        done
+        rm -f "$TMP_DIR/${name}."*
     fi
 }
 
-main "$@"
+for path in "$@"; do
+    if [ -f "$path" ]; then
+        send_file "$path"
+    elif [ -d "$path" ]; then
+        zip_path="$TMP_DIR/$(basename "$path").zip"
+        zip -r -q "$zip_path" "$path"
+        send_file "$zip_path"
+        rm -f "$zip_path"
+    else
+        echo "❌ Skipped invalid path: $path"
+    fi
+done
+
+rm -rf "$TMP_DIR"
